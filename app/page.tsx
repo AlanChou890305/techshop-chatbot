@@ -1,65 +1,139 @@
-import Image from "next/image";
+"use client";
+
+import { useChat } from "@ai-sdk/react";
+import { useEffect, useRef, useState } from "react";
+import MessageBubble from "@/components/MessageBubble";
+import QuickReplies from "@/components/QuickReplies";
+
+const WELCOME_MESSAGE = "嗨！我是 TechBot，TechShop 的智慧客服 👋\n\n我可以幫你：\n• 回答常見問題（運送、退換貨、保固、付款等）\n• 根據你的需求推薦適合的 3C 商品\n\n有什麼需要幫忙的嗎？";
 
 export default function Home() {
+  const { messages, sendMessage, status } = useChat();
+
+  const [input, setInput] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [showQuickReplies, setShowQuickReplies] = useState(true);
+
+  const isLoading = status === "submitted" || status === "streaming";
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => {
+    if (messages.length > 0) setShowQuickReplies(false);
+  }, [messages]);
+
+  const submit = () => {
+    const text = input.trim();
+    if (!text || isLoading) return;
+    setInput("");
+    sendMessage({ text });
+  };
+
+  const handleQuickReply = (text: string) => {
+    setShowQuickReplies(false);
+    sendMessage({ text });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      submit();
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="flex flex-col h-screen bg-zinc-50">
+      {/* Header */}
+      <header className="bg-white border-b border-zinc-200 px-4 py-3 flex items-center gap-3 shrink-0">
+        <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
+          T
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div>
+          <p className="font-semibold text-zinc-900 text-sm">TechBot</p>
+          <p className="text-xs text-zinc-400">TechShop 智慧客服</p>
         </div>
+        <div className="ml-auto flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />
+          <span className="text-xs text-zinc-400">線上</span>
+        </div>
+      </header>
+
+      {/* Messages */}
+      <main className="flex-1 overflow-y-auto px-4 pt-4">
+        {/* Welcome bubble */}
+        <div className="flex justify-start mb-4">
+          <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold mr-2 mt-0.5 shrink-0">
+            T
+          </div>
+          <div className="max-w-[80%] rounded-2xl rounded-bl-sm bg-zinc-100 text-zinc-800 px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">
+            {WELCOME_MESSAGE}
+          </div>
+        </div>
+
+        {/* Quick replies shown before first message */}
+        {showQuickReplies && (
+          <div className="ml-9 mb-4">
+            <QuickReplies onSelect={handleQuickReply} disabled={isLoading} />
+          </div>
+        )}
+
+        {messages.map((m) => (
+          <MessageBubble key={m.id} message={m} />
+        ))}
+
+        {isLoading && (
+          <div className="flex justify-start mb-4">
+            <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold mr-2 mt-0.5 shrink-0">
+              T
+            </div>
+            <div className="bg-zinc-100 rounded-2xl rounded-bl-sm px-4 py-3">
+              <span className="flex gap-1">
+                <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:0ms]" />
+                <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:150ms]" />
+                <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:300ms]" />
+              </span>
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
       </main>
+
+      {/* Input */}
+      <footer className="bg-white border-t border-zinc-200 px-4 py-3 shrink-0">
+        <div className="flex items-end gap-2">
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="輸入訊息… (Enter 送出，Shift+Enter 換行)"
+            rows={1}
+            className="flex-1 resize-none rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-32 overflow-y-auto"
+            style={{ minHeight: "40px" }}
+          />
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!input.trim() || isLoading}
+            className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="w-4 h-4 rotate-90"
+            >
+              <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+            </svg>
+          </button>
+        </div>
+        <p className="text-center text-xs text-zinc-300 mt-2">
+          TechShop 客服機器人 · 僅供參考，實際以官方資訊為準
+        </p>
+      </footer>
     </div>
   );
 }
