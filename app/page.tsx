@@ -23,6 +23,17 @@ export default function Home() {
   }, [messages]);
 
   useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    if (!input) {
+      el.style.height = "40px";
+      return;
+    }
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
+
+  useEffect(() => {
     if (messages.length > 0) setShowQuickReplies(false);
   }, [messages]);
 
@@ -104,7 +115,7 @@ export default function Home() {
 
       {/* Input */}
       <footer className="bg-white border-t border-zinc-200 px-4 py-3 shrink-0">
-        <div className="flex items-end gap-2">
+        <div className="flex items-start gap-2">
           <textarea
             ref={inputRef}
             value={input}
@@ -112,10 +123,10 @@ export default function Home() {
             onCompositionStart={() => { isComposingRef.current = true; }}
             onCompositionEnd={() => { isComposingRef.current = false; }}
             onKeyDown={handleKeyDown}
-            placeholder="輸入訊息… (Enter 送出，Shift+Enter 換行)"
+            placeholder="輸入訊息…"
             rows={1}
-            className="flex-1 resize-none rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-32 overflow-y-auto"
-            style={{ minHeight: "40px" }}
+            className="flex-1 resize-none rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-32 overflow-y-auto [&::-webkit-scrollbar]:hidden"
+            style={{ minHeight: "40px", scrollbarWidth: "none" }}
           />
           <button
             type="button"
