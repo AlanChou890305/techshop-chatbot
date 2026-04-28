@@ -1,6 +1,7 @@
 "use client";
 
 import type { UIMessage } from "ai";
+import ReactMarkdown from "react-markdown";
 import ProductCard from "./ProductCard";
 import EscalationBanner from "./EscalationBanner";
 import ConfidenceBadge from "./ConfidenceBadge";
@@ -80,16 +81,34 @@ export default function MessageBubble({ message }: Props) {
       <div className={`max-w-[80%] ${isUser ? "items-end" : "items-start"} flex flex-col gap-1`}>
         {message.parts.map((part, i) => {
           if (part.type === "text") {
+            const text = (part as { type: "text"; text: string }).text;
             return (
               <div
                 key={i}
-                className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                   isUser
                     ? "bg-blue-600 text-white rounded-br-sm"
                     : "bg-zinc-100 text-zinc-800 rounded-bl-sm"
                 }`}
               >
-                {(part as { type: "text"; text: string }).text}
+                {isUser ? (
+                  <span className="whitespace-pre-wrap">{text}</span>
+                ) : (
+                  <ReactMarkdown
+                    components={{
+                      p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                      ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
+                      li: ({ children }) => <li className="leading-snug">{children}</li>,
+                      strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                      code: ({ children }) => <code className="bg-zinc-200 px-1 rounded text-xs font-mono">{children}</code>,
+                      a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="underline">{children}</a>,
+                      hr: () => <hr className="my-2 border-zinc-300" />,
+                    }}
+                  >
+                    {text}
+                  </ReactMarkdown>
+                )}
               </div>
             );
           }
