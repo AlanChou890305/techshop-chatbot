@@ -49,6 +49,14 @@ export default function ProductCard({ product, reason }: Props) {
             目前缺貨
           </Badge>
         )}
+
+        <a
+          href="#"
+          onClick={(e) => e.preventDefault()}
+          className="flex items-center justify-center gap-1 w-full rounded-lg bg-blue-600 text-white text-xs font-medium py-2 hover:bg-blue-700 active:bg-blue-800 transition-colors mt-1"
+        >
+          前往購買 →
+        </a>
       </CardContent>
     </Card>
   );
