@@ -14,6 +14,7 @@ export default function Home() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
+  const isComposingRef = useRef(false);
 
   const isLoading = status === "submitted" || status === "streaming";
 
@@ -38,7 +39,7 @@ export default function Home() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !isComposingRef.current) {
       e.preventDefault();
       submit();
     }
@@ -108,6 +109,8 @@ export default function Home() {
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onCompositionStart={() => { isComposingRef.current = true; }}
+            onCompositionEnd={() => { isComposingRef.current = false; }}
             onKeyDown={handleKeyDown}
             placeholder="輸入訊息… (Enter 送出，Shift+Enter 換行)"
             rows={1}
