@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     model: anthropic("claude-sonnet-4-6"),
     system: buildSystemPrompt(),
     messages: await convertToModelMessages(messages),
-    stopWhen: stepCountIs(3),
+    stopWhen: stepCountIs(4),
     tools: {
       recommend_products: tool({
         description:
@@ -39,6 +39,19 @@ export async function POST(req: Request) {
           });
           return { summary, recommendations: resolved };
         },
+      }),
+
+      rate_confidence: tool({
+        description:
+          "回答 FAQ 類問題後，評估這個答案的信心程度。只用於 FAQ 問答，不用於商品推薦或澄清問句。",
+        inputSchema: z.object({
+          level: z
+            .enum(["high", "medium", "low"])
+            .describe(
+              "high=完全基於知識庫明確資訊; medium=部分有依據或問題模糊; low=知識庫不足建議轉真人"
+            ),
+        }),
+        execute: async ({ level }) => ({ level }),
       }),
 
       escalate_to_human: tool({

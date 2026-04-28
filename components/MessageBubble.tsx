@@ -3,6 +3,7 @@
 import type { UIMessage } from "ai";
 import ProductCard from "./ProductCard";
 import EscalationBanner from "./EscalationBanner";
+import ConfidenceBadge from "./ConfidenceBadge";
 import type { Product } from "@/lib/products";
 
 type ProductRecommendation = {
@@ -43,6 +44,11 @@ function renderDynamicTool(part: DynamicToolPart) {
           ))}
       </div>
     );
+  }
+
+  if (part.toolName === "rate_confidence") {
+    const result = part.output as { level: "high" | "medium" | "low" };
+    return <ConfidenceBadge level={result.level} />;
   }
 
   if (part.toolName === "escalate_to_human") {
