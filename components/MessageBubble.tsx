@@ -5,7 +5,9 @@ import ReactMarkdown from "react-markdown";
 import ProductCard from "./ProductCard";
 import EscalationBanner from "./EscalationBanner";
 import ConfidenceBadge from "./ConfidenceBadge";
+import OrderStatusCard from "./OrderStatusCard";
 import type { Product } from "@/lib/products";
+import type { Order } from "@/lib/orders";
 
 type ProductRecommendation = {
   product: Product | null;
@@ -21,6 +23,10 @@ type EscalateResult = {
   reason: string;
   contact: { email: string; phone: string; hours: string };
 };
+
+type LookupOrderResult =
+  | { found: false; orderNumber: string }
+  | { found: true; order: Order };
 
 type DynamicToolPart = {
   type: "dynamic-tool";
@@ -50,6 +56,22 @@ function renderDynamicTool(part: DynamicToolPart) {
   if (part.toolName === "rate_confidence") {
     const result = part.output as { level: "high" | "medium" | "low" };
     return <ConfidenceBadge level={result.level} />;
+  }
+
+  if (part.toolName === "lookup_order") {
+    const result = part.output as LookupOrderResult;
+    if (!result.found) {
+      return (
+        <div className="mt-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-500 max-w-sm">
+          找不到訂單 <span className="font-mono text-zinc-700">{result.orderNumber}</span>，請確認訂單編號是否正確。
+        </div>
+      );
+    }
+    return (
+      <div className="mt-2">
+        <OrderStatusCard order={result.order} />
+      </div>
+    );
   }
 
   if (part.toolName === "escalate_to_human") {
@@ -102,7 +124,10 @@ export default function MessageBubble({ message }: Props) {
                       li: ({ children }) => <li className="leading-snug">{children}</li>,
                       strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
                       code: ({ children }) => <code className="bg-zinc-200 px-1 rounded text-xs font-mono">{children}</code>,
-                      a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="underline">{children}</a>,
+                      a: ({ href, children }) => {
+                        const safe = href && /^https?:\/\//.test(href) ? href : "#";
+                        return <a href={safe} target="_blank" rel="noopener noreferrer" className="underline">{children}</a>;
+                      },
                       hr: () => <hr className="my-2 border-zinc-300" />,
                     }}
                   >

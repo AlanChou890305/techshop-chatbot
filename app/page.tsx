@@ -2,12 +2,17 @@
 
 import { useChat } from "@ai-sdk/react";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import MessageBubble from "@/components/MessageBubble";
 import QuickReplies from "@/components/QuickReplies";
+import OfflineForm from "@/components/OfflineForm";
+import CsatRating from "@/components/CsatRating";
+import { isBusinessHours } from "@/lib/utils";
 
-const WELCOME_MESSAGE = "嗨！我是 TechBot，TechShop 的智慧客服 👋\n\n我可以幫你：\n• 回答常見問題（運送、退換貨、保固、付款等）\n• 根據你的需求推薦適合的 3C 商品\n\n有什麼需要幫忙的嗎？";
+const WELCOME_MESSAGE =
+  "嗨！我是 TechBot，TechShop 的智慧客服 👋\n\n我可以幫你：\n• 回答常見問題（運送、退換貨、保固、付款等）\n• 根據你的需求推薦適合的 3C 商品\n• 查詢訂單狀態（請提供訂單編號，如 TS20240001）\n\n有什麼需要幫忙的嗎？";
 
-type TransferStatus = "idle" | "connecting" | "connected";
+type TransferStatus = "idle" | "connecting" | "connected" | "offline" | "offline-submitted";
 type HumanMessage = { id: string; role: "user" | "agent"; content: string };
 
 const AGENT_RULES: { keywords: string[]; response: string }[] = [
@@ -44,8 +49,17 @@ export default function Home() {
   const fallbackIndexRef = useRef(0);
   const transferTriggeredRef = useRef(false);
 
+  // Demo: simulate off-hours to test the offline form flow
+  const [simOffHours, setSimOffHours] = useState(false);
+
+  // CSAT overlay
+  const [showCsat, setShowCsat] = useState(false);
+
   const isConnected = transferStatus === "connected";
-  const isLoading = (status === "submitted" || status === "streaming") && !isConnected;
+  const isOffline = transferStatus === "offline" || transferStatus === "offline-submitted";
+  const isLoading = (status === "submitted" || status === "streaming") && !isConnected && !isOffline;
+
+  const hasBotReplied = messages.some((m) => m.role === "assistant");
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -82,20 +96,27 @@ export default function Home() {
     );
     if (!hasEscalation) return;
     transferTriggeredRef.current = true;
-    setTransferStatus("connecting");
-    setTimeout(() => {
-      setTransferStatus("connected");
-      setHumanMessages([{
-        id: "agent-greeting",
-        role: "agent",
-        content: "您好，我是客服專員小明！已接手您的對話，請問有什麼可以幫您的嗎？",
-      }]);
-    }, 2000);
-  }, [messages]);
+
+    const online = isBusinessHours() && !simOffHours;
+    if (online) {
+      setTransferStatus("connecting");
+      const timer = setTimeout(() => {
+        setTransferStatus("connected");
+        setHumanMessages([{
+          id: "agent-greeting",
+          role: "agent",
+          content: "您好，我是客服專員小明！已接手您的對話，請問有什麼可以幫您的嗎？",
+        }]);
+      }, 2000);
+      return () => clearTimeout(timer);
+    } else {
+      setTransferStatus("offline");
+    }
+  }, [messages, simOffHours]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [humanMessages, agentTyping]);
+  }, [humanMessages, agentTyping, transferStatus]);
 
   const submitHumanMessage = (text: string) => {
     if (!text || agentTyping) return;
@@ -134,6 +155,16 @@ export default function Home() {
     }
   };
 
+  const handleOfflineSubmit = (data: { name: string; phone: string; message: string }) => {
+    setTransferStatus("offline-submitted");
+    // In a real app, send data to a backend endpoint
+  };
+
+  const inputDisabled =
+    transferStatus === "connecting" ||
+    transferStatus === "offline" ||
+    transferStatus === "offline-submitted";
+
   return (
     <div className="flex flex-col h-screen bg-zinc-50">
       {/* Header */}
@@ -160,9 +191,30 @@ export default function Home() {
             </>
           )}
         </div>
-        <div className="ml-auto flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />
-          <span className="text-xs text-zinc-400">線上</span>
+        <div className="ml-auto flex items-center gap-3">
+          {hasBotReplied && (
+            <button
+              onClick={() => setShowCsat(true)}
+              className="text-xs text-zinc-400 hover:text-zinc-600 border border-zinc-200 rounded-lg px-2.5 py-1 hover:bg-zinc-50 transition-colors"
+            >
+              結束評價
+            </button>
+          )}
+          <Link
+            href="/dashboard"
+            className="text-xs text-zinc-400 hover:text-zinc-600"
+            title="管理後台"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+              <path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.036-.84-1.875-1.875-1.875h-.75ZM9.75 8.625c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 0 1-1.875-1.875V8.625ZM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 0 1 3 19.875v-6.75Z" />
+            </svg>
+          </Link>
+          {!isConnected && (
+            <>
+              <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />
+              <span className="text-xs text-zinc-400">線上</span>
+            </>
+          )}
         </div>
       </header>
 
@@ -178,7 +230,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Quick replies shown before first message */}
         {showQuickReplies && (
           <div className="ml-9 mb-4">
             <QuickReplies onSelect={handleQuickReply} disabled={isLoading} />
@@ -200,6 +251,27 @@ export default function Home() {
                 <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:150ms]" />
                 <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:300ms]" />
               </span>
+            </div>
+          </div>
+        )}
+
+        {/* Offline form — appears as a bot message after escalation outside hours */}
+        {transferStatus === "offline" && (
+          <div className="flex justify-start mb-4">
+            <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold mr-2 mt-0.5 shrink-0">
+              T
+            </div>
+            <OfflineForm onSubmit={handleOfflineSubmit} />
+          </div>
+        )}
+
+        {transferStatus === "offline-submitted" && (
+          <div className="flex justify-start mb-4">
+            <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold mr-2 mt-0.5 shrink-0">
+              T
+            </div>
+            <div className="max-w-[80%] rounded-2xl rounded-bl-sm bg-zinc-100 text-zinc-800 px-4 py-2.5 text-sm leading-relaxed">
+              感謝您的留言！我們已收到您的聯絡資訊，客服人員將於下一個工作日優先聯繫您 📩
             </div>
           </div>
         )}
@@ -240,7 +312,6 @@ export default function Home() {
           )
         )}
 
-        {/* Agent typing indicator */}
         {agentTyping && (
           <div className="flex justify-start mb-4">
             <div className="w-7 h-7 rounded-full bg-green-600 flex items-center justify-center text-white text-xs font-bold mr-2 mt-0.5 shrink-0">
@@ -269,8 +340,16 @@ export default function Home() {
             onCompositionStart={() => { isComposingRef.current = true; }}
             onCompositionEnd={() => { isComposingRef.current = false; }}
             onKeyDown={handleKeyDown}
-            placeholder={isConnected ? "傳送訊息給客服人員…" : transferStatus === "connecting" ? "正在連接客服人員…" : "輸入訊息…"}
-            disabled={transferStatus === "connecting"}
+            placeholder={
+              isConnected
+                ? "傳送訊息給客服人員…"
+                : transferStatus === "connecting"
+                ? "正在連接客服人員…"
+                : inputDisabled
+                ? "對話已結束"
+                : "輸入訊息…"
+            }
+            disabled={inputDisabled}
             rows={1}
             className="flex-1 resize-none rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent max-h-32 overflow-y-auto [&::-webkit-scrollbar]:hidden disabled:opacity-50"
             style={{ minHeight: "40px", scrollbarWidth: "none" }}
@@ -278,7 +357,7 @@ export default function Home() {
           <button
             type="button"
             onClick={submit}
-            disabled={!input.trim() || isLoading || transferStatus === "connecting" || agentTyping}
+            disabled={!input.trim() || isLoading || inputDisabled || agentTyping}
             className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
           >
             <svg
@@ -291,10 +370,25 @@ export default function Home() {
             </svg>
           </button>
         </div>
-        <p className="text-center text-xs text-zinc-300 mt-2">
-          TechShop 客服機器人 · 僅供參考，實際以官方資訊為準
-        </p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-xs text-zinc-300">
+            TechShop 客服機器人 · 僅供參考，實際以官方資訊為準
+          </p>
+          <button
+            onClick={() => {
+              setSimOffHours((v) => !v);
+              if (transferStatus === "idle") transferTriggeredRef.current = false;
+            }}
+            className={`text-xs px-2 py-0.5 rounded transition-colors ${simOffHours ? "text-amber-500 bg-amber-50" : "text-zinc-300 hover:text-zinc-400"}`}
+            title="Demo：切換非服務時間模式"
+          >
+            {simOffHours ? "🌙 非服務時間" : "🌙"}
+          </button>
+        </div>
       </footer>
+
+      {/* CSAT overlay */}
+      {showCsat && <CsatRating onClose={() => setShowCsat(false)} />}
     </div>
   );
 }

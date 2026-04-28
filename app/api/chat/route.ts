@@ -3,6 +3,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { z } from "zod";
 import { buildSystemPrompt } from "@/lib/system-prompt";
 import { products } from "@/lib/products";
+import { lookupOrder } from "@/lib/orders";
 
 export const maxDuration = 60;
 
@@ -52,6 +53,19 @@ export async function POST(req: Request) {
             ),
         }),
         execute: async ({ level }) => ({ level }),
+      }),
+
+      lookup_order: tool({
+        description:
+          "查詢訂單狀態。當用戶提供訂單編號時呼叫此工具（格式通常為 TSXXXXXXXX）。",
+        inputSchema: z.object({
+          orderNumber: z.string().describe("訂單編號，例如 TS20240001"),
+        }),
+        execute: async ({ orderNumber }) => {
+          const order = lookupOrder(orderNumber);
+          if (!order) return { found: false, orderNumber };
+          return { found: true, order };
+        },
       }),
 
       escalate_to_human: tool({
