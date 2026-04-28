@@ -35,7 +35,7 @@ function getAgentResponse(text: string, fallbackIndex: number): string {
 }
 
 export default function Home() {
-  const { messages, sendMessage, status } = useChat();
+  const { messages, sendMessage, status, error, regenerate } = useChat();
 
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -251,6 +251,23 @@ export default function Home() {
                 <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:150ms]" />
                 <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:300ms]" />
               </span>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="flex justify-start mb-4">
+            <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center text-red-400 text-xs font-bold mr-2 mt-0.5 shrink-0">
+              !
+            </div>
+            <div className="max-w-[80%] rounded-2xl rounded-bl-sm bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-700 leading-relaxed space-y-2">
+              <p>服務暫時無法回應，請稍後再試。</p>
+              <button
+                onClick={() => regenerate()}
+                className="text-xs font-medium text-red-600 hover:text-red-800 underline"
+              >
+                重新傳送
+              </button>
             </div>
           </div>
         )}
